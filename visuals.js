@@ -10,10 +10,10 @@ class Circle {
   }
   draw(size) {
 
-    if (dist(this.position.x, this.position.y, mouseX, mouseY) < this.diameter / 2 && mouseIsPressed) {
-      this.position.x = mouseX;
-      this.position.y = mouseY;
-    }
+    // if (dist(this.position.x, this.position.y, mouseX, mouseY) < this.diameter / 2 && mouseIsPressed) {
+    //   this.position.x = mouseX;
+    //   this.position.y = mouseY;
+    // }
 
     fill(this.color / 1.5);
     stroke(this.color / 1.5);
@@ -40,7 +40,7 @@ class Pulse {
   set_color(color) {
     this.color = color;
   }
-  draw() {
+  draw(size) {
     fill(this.color);
     stroke(this.color);
     let fr = frameRate();
@@ -48,19 +48,20 @@ class Pulse {
       let t = this.pulses[i];
       // let x = p1.x*t+p2.x*(1-t);
       let p3 = p5.Vector.lerp(this.p1, this.p2, t)
-      circle(p3.x, p3.y, this.size)
+      circle(p3.x, p3.y, size)
       this.pulses[i] += this.delay / fr;
     }
     this.pulses = this.pulses.filter(x => x < 1);
+  }
+  draw_line(size) {
     if (this.line) {
       noFill();
-      stroke(255);
+      stroke(this.color / 2.0);
+      strokeWeight(size);
       bezier(this.p1.x, this.p1.y, this.p2.x, this.p2.y, this.p1.x, this.p1.y, this.p2.x, this.p2.y);
     }
   }
 }
-
-
 
 // function Pulse(p1, p2, delay) {
 //   this.p1 = p1;
@@ -85,6 +86,7 @@ class Pulse {
 //   this.pulses = this.pulses.filter(x => x < 1);
 // }
 
+
 class Scope {
   constructor(left, bottom, width, height) {
     this.buffer_size = 512
@@ -108,13 +110,14 @@ class Scope {
     noFill();
     stroke(this.color);
 
-    this.x_prev = 0;
+    this.x_prev = this.left;
     this.y_prev = this.bottom - this.buffer[0] * this.height;
 
     for (let i = 1; i < this.buffer_size; i++) {
       let xx = this.left + i / this.buffer_size * this.width;
       let yy = this.buffer[i]
       yy = this.bottom - yy * this.height;
+      strokeWeight(0.5);
       line(this.x_prev, this.y_prev, xx, yy);
       this.x_prev = xx;
       this.y_prev = yy;

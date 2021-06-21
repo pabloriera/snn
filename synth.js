@@ -1,13 +1,18 @@
 var synth = new Tone.PolySynth().toMaster();
 
-function Voice(note) {
-    this.note = note;
+function Voice(note, duration) {
+    this.set_note(note);
+    this.set_duration(duration);
 }
 
 Voice.prototype.set_note = function (note) {
-    this.note = note;
+    this.note = Tone.Frequency(note, "midi");
+}
+
+Voice.prototype.set_duration = function (duration) {
+    this.duration = Tone.Time(duration).toNotation();
 }
 
 Voice.prototype.trigger = function () {
-    synth.triggerAttackRelease(this.note, "16n");
+    synth.triggerAttackRelease(this.note, this.duration);
 }
