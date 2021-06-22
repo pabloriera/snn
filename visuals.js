@@ -102,8 +102,8 @@ class Score {
     for (let i = 1; i < this.buffer_size; i++) {
       if (this.buffer[i] > 0) {
         let x = this.left + i / this.buffer_size * this.width;
-        strokeWeight(10);
-        rect(x - 2, this.bottom, 4, this.height);
+        strokeWeight(0.5);
+        rect(x - 1, this.bottom, 2, this.height);
         // line(x, this.bottom, x, this.height);
       }
     }
