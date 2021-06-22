@@ -18,6 +18,7 @@ circles = [];
 pulses = [];
 scopes = [];
 voices = [];
+scores = [];
 NN = null;
 n_neurons = 12;
 
@@ -69,6 +70,8 @@ function setup() {
   for (let i = 0; i < NN.neurons.length; i++) {
     scope = new Scope(-width / 2, height / 2 - (i + 1) * 60, width, 40);
     scopes.push(scope);
+    score = new Score(-width / 2, height / 2 - (i + 1) * 60, width, 40);
+    scores.push(score);
   }
 
   let gui = new dat.GUI();
@@ -144,6 +147,7 @@ function draw() {
   for (let i = 0; i < NN.neurons.length; i++) {
     circles[i].draw(NN.neurons[i].Vnorm)
     scopes[i].draw(NN.neurons[i].Vnorm)
+    scores[i].draw(NN.neurons[i].spike_event)
   }
   for (let k = 0; k < NN.synapses.length; k++) {
     let wnorm = map(NN.synapses[k].weight, 0, 2000, 0, 10);

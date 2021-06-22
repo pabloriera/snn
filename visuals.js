@@ -63,29 +63,52 @@ class Pulse {
   }
 }
 
-// function Pulse(p1, p2, delay) {
-//   this.p1 = p1;
-//   this.p2 = p2;
-//   this.delay = delay;
-//   this.pulses = [];
-//   this.size = 20;
-//   this.dt = p2.dist(p1) / delay;
-// }
-// Pulse.prototype.add_event = function () {
-//   console.log(this.pulses);
-//   this.pulses.push(0);
-// }
-// Pulse.prototype.draw = function () {
-//   for (let i = 0; i < this.pulses.length; i++) {
-//     let t = this.pulses[i];
-//     // let x = p1.x*t+p2.x*(1-t);
-//     let p3 = p5.Vector.lerp(this.p1, this.p2, t)
-//     circle(p3.x, p3.y, this.size)
-//     this.pulses[i] += dt;
-//   }
-//   this.pulses = this.pulses.filter(x => x < 1);
-// }
+class Score {
+  constructor(left, bottom, width, height) {
+    this.buffer_size = 64
+    this.buffer = new Array(this.buffer_size).fill(0);
+    this.left = left;
+    this.bottom = bottom;
+    this.width = width;
+    this.height = height;
+    this.color = 200;
+    this.pt = 0;
 
+  }
+
+  set_color(color) {
+    this.color = color;
+  }
+
+  draw(event) {
+    if (event)
+      event = 1;
+    else
+      event = 0;
+
+    this.buffer[Math.floor(this.pt)] += event;
+    this.pt = this.pt + 64 / 512
+
+    if (this.pt > this.buffer_size) {
+      this.pt -= this.buffer_size;
+      for (let i = 1; i < this.buffer_size; i++) {
+        this.buffer[i] = 0;
+      }
+    }
+
+    noFill();
+    stroke(this.color);
+
+    for (let i = 1; i < this.buffer_size; i++) {
+      if (this.buffer[i] > 0) {
+        let x = this.left + i / this.buffer_size * this.width;
+        strokeWeight(10);
+        rect(x - 2, this.bottom, 4, this.height);
+        // line(x, this.bottom, x, this.height);
+      }
+    }
+  }
+}
 
 class Scope {
   constructor(left, bottom, width, height) {
