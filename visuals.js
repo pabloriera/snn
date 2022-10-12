@@ -4,6 +4,7 @@ class Circle {
     this.position = position;
     this.diameter = diameter;
     this.color = 200;
+    this.on = true;
   }
   set_color(color) {
     this.color = color;
@@ -14,13 +15,14 @@ class Circle {
     //   this.position.x = mouseX;
     //   this.position.y = mouseY;
     // }
-
-    fill(this.color / 1.5);
-    stroke(this.color / 1.5);
-    circle(this.position.x, this.position.y, this.diameter)
-    fill(this.color);
-    stroke(this.color);
-    circle(this.position.x, this.position.y, map(size, 0, 1, 0, this.diameter, true))
+    if (this.on) {
+      fill(this.color / 1.5);
+      stroke(this.color / 1.5);
+      circle(this.position.x, this.position.y, this.diameter)
+      fill(this.color);
+      stroke(this.color);
+      circle(this.position.x, this.position.y, map(size, 0, 1, 0, this.diameter, true))
+    }
   }
 }
 
@@ -33,6 +35,7 @@ class Pulse {
     this.size = 5;
     this.line = true;
     this.color = 200;
+    this.on = true;
   }
   add_event() {
     this.pulses.push(0);
@@ -41,24 +44,28 @@ class Pulse {
     this.color = color;
   }
   draw(size) {
-    fill(this.color);
-    stroke(this.color);
-    let fr = frameRate();
-    for (let i = 0; i < this.pulses.length; i++) {
-      let t = this.pulses[i];
-      // let x = p1.x*t+p2.x*(1-t);
-      let p3 = p5.Vector.lerp(this.p1, this.p2, t)
-      circle(p3.x, p3.y, size)
-      this.pulses[i] += this.delay / fr;
+    if (this.on) {
+      fill(this.color);
+      stroke(this.color);
+      let fr = frameRate();
+      for (let i = 0; i < this.pulses.length; i++) {
+        let t = this.pulses[i];
+        // let x = p1.x*t+p2.x*(1-t);
+        let p3 = p5.Vector.lerp(this.p1, this.p2, t)
+        circle(p3.x, p3.y, size)
+        this.pulses[i] += this.delay / fr;
+      }
+      this.pulses = this.pulses.filter(x => x < 1);
     }
-    this.pulses = this.pulses.filter(x => x < 1);
   }
   draw_line(size) {
-    if (this.line) {
-      noFill();
-      stroke(this.color / 2.0);
-      strokeWeight(size);
-      bezier(this.p1.x, this.p1.y, this.p2.x, this.p2.y, this.p1.x, this.p1.y, this.p2.x, this.p2.y);
+    if (this.on) {
+      if (this.line) {
+        noFill();
+        stroke(this.color / 2.0);
+        strokeWeight(size);
+        bezier(this.p1.x, this.p1.y, this.p2.x, this.p2.y, this.p1.x, this.p1.y, this.p2.x, this.p2.y);
+      }
     }
   }
 }
@@ -96,7 +103,7 @@ class Score {
       }
     }
 
-    noFill();
+    fill(this.color);
     stroke(this.color);
 
     for (let i = 1; i < this.buffer_size; i++) {

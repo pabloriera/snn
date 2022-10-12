@@ -1,12 +1,16 @@
-var synth = new Tone.PolySynth().toMaster();
+var synth = new Tone.PolySynth().toDestination();
 
 function Voice(note, duration) {
     this.set_note(note);
     this.set_duration(duration);
 }
 
-Voice.prototype.set_note = function (note) {
+Voice.prototype.set_midi_note = function (note) {
     this.note = Tone.Frequency(note, "midi");
+}
+
+Voice.prototype.set_note = function (note) {
+    this.note = Tone.Frequency(note);
 }
 
 Voice.prototype.set_duration = function (duration) {

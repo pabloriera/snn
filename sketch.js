@@ -2,12 +2,14 @@ settings =
 {
   'weight mean': 1000,
   'weight size': 500,
-  'dc 1': 0.1,
   'dt': 0.25,
   'circle size': 50,
   'note duration': 0.125,
+  'note volume': -12,
   'syn type': 0.5,
-  'dropout': 0.5
+  'dropout': 0.5,
+  'net': true,
+  'scale': {}
 }
 
 gravityConstant = 0.2;
@@ -28,6 +30,10 @@ nodeCon = []
 clicked = false;
 lerpValue = 0.2;
 
+// var mscale = require('music-scale')
+// var major = mscale('1 2 3 4 5 6 7')
+// console.log(major)
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
@@ -44,11 +50,13 @@ function setup() {
   closeNode = nodes[0]
 
   for (let i = 0; i < NN.neurons.length; i++) {
-    let voice = new Voice(60 + i * 2, 0.125);
+    let voice = new Voice("A4", 0.125);
     NN.neurons[i].set_event_callback(function () { voice.trigger(); });
     voices.push(voice);
     let circle = new Circle(nodes[i].pos, settings['circle size']);
     circles.push(circle);
+    settings['dc ' + (i + 1)] = 0
+
   }
 
   NN.set_random_weight(1000, 100);
@@ -75,46 +83,73 @@ function setup() {
   }
 
   let gui = new dat.GUI();
-  gui.add(settings, 'syn type', 0, 1, 0.01).onChange(
+  const netFolder = gui.addFolder('Network');
+  netFolder.open()
+  netFolder.add(settings, 'syn type', 0, 1, 0.01).onChange(
     function () {
       NN.set_type_proportion(this.getValue());
     }
   );
-  gui.add(settings, 'weight mean', 0, 1000.0, 10.0).onChange(
+  netFolder.add(settings, 'weight mean', 0, 1000.0, 10.0).onChange(
     function () {
       NN.set_mean_weight(this.getValue());
       weights_to_nodes();
     }
   );
-  gui.add(settings, 'weight size', 0, 500.0, 5).onChange(
+  netFolder.add(settings, 'weight size', 0, 500.0, 5).onChange(
     function () {
       NN.set_size_weight(this.getValue());
       weights_to_nodes();
     }
   );
-  gui.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
+  netFolder.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
     function () {
       NN.set_dropout(this.getValue());
       weights_to_nodes();
     }
   );
-  gui.add(settings, 'dc 1', 0, 500, 0.1);
-  gui.addFolder('Vis');
-  gui.add(settings, 'circle size', 0, 50, 1).onChange(
+  const currentFolder = gui.addFolder('Currents');
+  for (let i = 0; i < NN.neurons.length; i++) {
+    currentFolder.add(settings, 'dc ' + (i + 1), 0, 500, 0.1);
+  }
+
+  const visFolder = gui.addFolder('Vis');
+  visFolder.open()
+  const visnetFolder = visFolder.addFolder('Net');
+  visnetFolder.open()
+  visnetFolder.add(settings, 'net').onChange(
+    (val) => {
+      for (let i = 0; i < NN.neurons.length; i++) {
+        circles[i].on = val;
+      }
+      for (let k = 0; k < NN.synapses.length; k++) {
+        pulses[k].on = val;
+      }
+    }
+  );
+  visnetFolder.add(settings, 'circle size', 0, 50, 1).onChange(
     function () {
       for (let i = 0; i < NN.neurons.length; i++) {
         circles[i].diameter = this.getValue();
       }
     }
   );
-  gui.add(settings, 'note duration', 0, 4, 0.01).onChange(
+  const sndFolder = gui.addFolder('Sound');
+  sndFolder.open()
+  sndFolder.add(settings, 'note duration', 0, 4, 0.01).onChange(
     function () {
       for (let i = 0; i < voices.length; i++) {
         voices[i].set_duration(this.getValue());
       }
     }
   );
-  gui.add({ 'kick': function () { kick() } }, 'kick');
+  sndFolder.add(settings, 'note volume', -24, 0, 1).onChange(
+    (val) => { synth.volume.value = val }
+  )
+  sndFolder.add(settings, 'scale', { Major: 'major', Minor: 'minor', Harmonics: 'harmonics' }).onChange(
+    (val) => { console.log(val) }
+  )
+  // gui.add({ 'kick': function () { kick() } }, 'kick');
 
 }
 
@@ -135,7 +170,10 @@ function draw() {
     }
   }
 
-  NN.neurons[0].dc = settings['dc 1'];
+
+  for (let i = 0; i < NN.neurons.length; i++) {
+    NN.neurons[i].dc = settings['dc ' + (i + 1)];
+  }
 
   NN.update();
 
