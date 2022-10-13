@@ -104,6 +104,12 @@ NeuralNetwork.prototype.set_all_w_d = function (weight, delay) {
     }
 }
 
+NeuralNetwork.prototype.set_all_delay = function (delay) {
+    for (let k = 0; k < this.synapses.length; k++) {
+        this.synapses[k].set_delay(delay);
+    }
+}
+
 NeuralNetwork.prototype.set_mean_weight = function (mean) {
     let m = 0;
     for (let k = 0; k < this.synapses.length; k++) {
@@ -183,6 +189,9 @@ Synapse.prototype.set_random_delay = function (_min, _max) {
 
 Synapse.prototype.set_weight_delay = function (w, d) {
     this.weight = w;
+    this.delay = d;
+}
+Synapse.prototype.set_delay = function (d) {
     this.delay = d;
 }
 

@@ -9,13 +9,21 @@ settings =
   'syn type': 0.5,
   'dropout': 0.5,
   'net': true,
-  'scale': {}
+  'scale': {},
+  'dc all': 0.0,
+  'delay all': 0.02
 }
 
+var syn_colors;
+var color_base;
+var color_bright
+
+marginx = 50
 gravityConstant = 0.2;
 forceConstant = 2000;
 mass = 1;
 
+var net_score_border
 circles = [];
 pulses = [];
 scopes = [];
@@ -30,12 +38,17 @@ nodeCon = []
 clicked = false;
 lerpValue = 0.2;
 
-// var mscale = require('music-scale')
-// var major = mscale('1 2 3 4 5 6 7')
-// console.log(major)
+// scale = ["A4",]
+escala = ['D3', 'E3', 'F#3', 'G#3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'G#4', 'A5']
 
 function setup() {
+  net_score_border = (net_scale - 0.5) * windowWidth
   createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 100);
+  syn_colors = { '-1': color(0, 80, 100), '1': color(20, 80, 100) };
+  color_base = color(0, 0, 70)
+  color_bright = color(0, 0, 100)
+
 
   NN = new NeuralNetwork();
   NN.add_neurons(n_neurons);
@@ -50,7 +63,7 @@ function setup() {
   closeNode = nodes[0]
 
   for (let i = 0; i < NN.neurons.length; i++) {
-    let voice = new Voice("A4", 0.125);
+    let voice = new Voice(escala[i], 0.125);
     NN.neurons[i].set_event_callback(function () { voice.trigger(); });
     voices.push(voice);
     let circle = new Circle(nodes[i].pos, settings['circle size']);
@@ -68,7 +81,8 @@ function setup() {
     let S = NN.synapses[k];
     i = S.from.id;
     j = S.to.id;
-    let pulse = new Pulse(circles[i].position, circles[j].position, S.delay);
+    syn_type = NN.neurons[i].syn_type
+    let pulse = new Pulse(circles[i].position, circles[j].position, S.delay, syn_type);
     S.set_event_callback(pulse.add_event.bind(pulse));
     pulses.push(pulse);
     nodeCon.push([i, j, S.weight / 2.0])
@@ -76,18 +90,25 @@ function setup() {
 
 
   for (let i = 0; i < NN.neurons.length; i++) {
-    scope = new Scope(-width / 2, height / 2 - (i + 1) * 60, width, 40);
+    scope = new Scope(-width / 2 + net_score_border, -(i + 1) * 60 + height / 2, width - net_score_border - marginx, 40);
     scopes.push(scope);
-    score = new Score(-width / 2, height / 2 - (i + 1) * 60, width, 40);
+    score = new Score(-width / 2 + net_score_border, -(i + 1) * 60 + height / 2, width - net_score_border - marginx, 40);
     scores.push(score);
   }
 
-  let gui = new dat.GUI();
+  var gui = new dat.GUI();
   const netFolder = gui.addFolder('Network');
   netFolder.open()
   netFolder.add(settings, 'syn type', 0, 1, 0.01).onChange(
     function () {
       NN.set_type_proportion(this.getValue());
+      for (let k = 0; k < NN.synapses.length; k++) {
+        let S = NN.synapses[k];
+        i = S.from.id;
+        j = S.to.id;
+        syn_type = NN.neurons[i].syn_type
+        pulses[k].set_syn_type(syn_type)
+      }
     }
   );
   netFolder.add(settings, 'weight mean', 0, 1000.0, 10.0).onChange(
@@ -102,6 +123,17 @@ function setup() {
       weights_to_nodes();
     }
   );
+  netFolder.add(settings, 'delay all', 0.02, 10.0, 0.01).onChange(
+    (val) => {
+      NN.set_all_delay(val);
+      for (let k = 0; k < NN.synapses.length; k++) {
+        let S = NN.synapses[k];
+        delay = S.delay
+        pulses[k].set_delay(delay)
+      }
+      weights_to_nodes();
+    }
+  );
   netFolder.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
     function () {
       NN.set_dropout(this.getValue());
@@ -109,6 +141,14 @@ function setup() {
     }
   );
   const currentFolder = gui.addFolder('Currents');
+  currentFolder.add(settings, 'dc all', 0, 500, 0.1).onChange(
+    (val) => {
+      for (let i = 0; i < NN.neurons.length; i++) {
+        settings['dc ' + (i + 1)] = val;
+        gui.__folders['Currents'].__controllers[i + 1].setValue(val)
+      }
+    }
+  );
   for (let i = 0; i < NN.neurons.length; i++) {
     currentFolder.add(settings, 'dc ' + (i + 1), 0, 500, 0.1);
   }
@@ -136,7 +176,7 @@ function setup() {
   );
   const sndFolder = gui.addFolder('Sound');
   sndFolder.open()
-  sndFolder.add(settings, 'note duration', 0, 4, 0.01).onChange(
+  sndFolder.add(settings, 'note duration', .01, 1, 0.01).onChange(
     function () {
       for (let i = 0; i < voices.length; i++) {
         voices[i].set_duration(this.getValue());
@@ -151,6 +191,7 @@ function setup() {
   )
   // gui.add({ 'kick': function () { kick() } }, 'kick');
 
+  windowResized()
 }
 
 function draw() {
@@ -163,7 +204,7 @@ function draw() {
   })
 
   if (clicked == true && closeNode) {
-    let mousePos = createVector(mouseX - width / 2, mouseY - height / 2)
+    let mousePos = createVector(mouseX - width / 2 - net_offset_x, mouseY - height / 2 - net_offset_y)
     closeNode.pos.lerp(mousePos, lerpValue)
     if (lerpValue < 0.95) {
       lerpValue += 0.02;
@@ -213,7 +254,9 @@ function touchStarted() {
     lerpValue = 0.2
   } else {
     clicked = true
-    let mousePos = createVector(mouseX - width / 2, mouseY - height / 2)
+    // let mousePos = createVector(mouseX - width / 2, mouseY - height / 2)
+    let mousePos = createVector(mouseX - width / 2 - net_offset_x, mouseY - height / 2 - net_offset_y)
+
     let i = 0;
     closeNode = null;
     nodes.forEach((node) => {
@@ -229,10 +272,11 @@ function touchStarted() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-
+  net_score_border = (net_scale - 0.5) * width
+  net_offset_x = -windowWidth / 2 + net_score_border / 2;
   for (let i = 0; i < NN.neurons.length; i++) {
-    scopes[i].width = width;
-    scopes[i].height = height - (i + 1) * 60;
+    // scopes[i].width = windowWidth;
+    // scopes[i].height = windowHeight / NN.neurons.length;
   }
 
 }

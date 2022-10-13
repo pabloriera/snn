@@ -1,4 +1,13 @@
-var synth = new Tone.PolySynth().toDestination();
+// var synth = new Tone.PolySynth().toDestination();
+
+const synth = new Tone.Sampler({
+    urls: {
+        A1: "A1.mp3",
+        A2: "A2.mp3",
+    },
+    baseUrl: "https://tonejs.github.io/audio/casio/",
+
+}).toDestination();
 
 function Voice(note, duration) {
     this.set_note(note);

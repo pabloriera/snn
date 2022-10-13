@@ -1,9 +1,15 @@
 
+var net_offset_x = 0;
+var net_offset_y = 0;
+var net_scale = 1.0;
+
+
 class Circle {
   constructor(position, diameter) {
     this.position = position;
     this.diameter = diameter;
-    this.color = 200;
+    this.color = color_base;
+    this.color_bright = color_bright;
     this.on = true;
   }
   set_color(color) {
@@ -16,26 +22,33 @@ class Circle {
     //   this.position.y = mouseY;
     // }
     if (this.on) {
-      fill(this.color / 1.5);
-      stroke(this.color / 1.5);
-      circle(this.position.x, this.position.y, this.diameter)
+      push();
+      translate(net_offset_x, net_offset_y)
+      scale(net_scale)
       fill(this.color);
       stroke(this.color);
-      circle(this.position.x, this.position.y, map(size, 0, 1, 0, this.diameter, true))
+      circle(this.position.x, this.position.y, this.diameter)
+      fill(this.color_bright);
+      stroke(this.color_bright);
+      circle(this.position.x, this.position.y, map(size, -0.1, 1, 0, this.diameter, true))
+      pop();
+
     }
   }
 }
 
 class Pulse {
-  constructor(p1, p2, delay) {
+  constructor(p1, p2, delay, syn_type) {
     this.p1 = p1;
     this.p2 = p2;
     this.delay = delay;
     this.pulses = [];
     this.size = 5;
     this.line = true;
-    this.color = 200;
+    this.color = color_base;
     this.on = true;
+    this.syn_type = syn_type;
+    this.syn_color = syn_colors[syn_type.toString()]
   }
   add_event() {
     this.pulses.push(0);
@@ -43,30 +56,47 @@ class Pulse {
   set_color(color) {
     this.color = color;
   }
+  set_delay(delay) {
+    this.delay = delay;
+  }
+  set_syn_type(syn_type) {
+    this.syn_type = syn_type;
+    this.syn_color = syn_colors[syn_type.toString()]
+  }
   draw(size) {
     if (this.on) {
-      fill(this.color);
-      stroke(this.color);
+      push();
+      translate(net_offset_x, net_offset_y)
+      scale(net_scale)
+      fill(this.syn_color);
+      stroke(this.syn_color);
       let fr = frameRate();
       for (let i = 0; i < this.pulses.length; i++) {
         let t = this.pulses[i];
         // let x = p1.x*t+p2.x*(1-t);
         let p3 = p5.Vector.lerp(this.p1, this.p2, t)
         circle(p3.x, p3.y, size)
-        this.pulses[i] += this.delay / fr;
+        this.pulses[i] += 1 / fr / (this.delay + 0.001);
       }
       this.pulses = this.pulses.filter(x => x < 1);
+      pop()
     }
   }
   draw_line(size) {
     if (this.on) {
+      push();
+      translate(net_offset_x, net_offset_y)
+      scale(net_scale)
       if (this.line) {
         noFill();
-        stroke(this.color / 2.0);
+        stroke(this.color);
         strokeWeight(size);
-        bezier(this.p1.x, this.p1.y, this.p2.x, this.p2.y, this.p1.x, this.p1.y, this.p2.x, this.p2.y);
+        bezier(this.p1.x, this.p1.y, this.p2.x, this.p2.y,
+          this.p1.x, this.p1.y, this.p2.x, this.p2.y);
       }
+      pop()
     }
+
   }
 }
 
@@ -78,7 +108,7 @@ class Score {
     this.bottom = bottom;
     this.width = width;
     this.height = height;
-    this.color = 200;
+    this.color = color_bright;
     this.pt = 0;
 
   }
@@ -126,7 +156,7 @@ class Scope {
     this.width = width;
     this.height = height;
     this.pt = 0;
-    this.color = 200;
+    this.color = color_bright;
   }
 
   set_color(color) {
