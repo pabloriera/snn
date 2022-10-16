@@ -1,3 +1,6 @@
+noise_scale = 10;
+weight_scale = 2;
+
 function NeuralNetwork() {
     this.neurons = [];
     this.synapses = [];
@@ -110,6 +113,45 @@ NeuralNetwork.prototype.set_all_delay = function (delay) {
     }
 }
 
+NeuralNetwork.prototype.set_mean_delay = function (mean) {
+    let m = 0;
+    for (let k = 0; k < this.synapses.length; k++) {
+        m += this.synapses[k].delay;
+    }
+    m = m / this.synapses.length;
+    console.log(m)
+    for (let k = 0; k < this.synapses.length; k++) {
+        this.synapses[k].delay = this.synapses[k].delay - m + mean;
+        if (this.synapses[k].delay < 0)
+            this.synapses[k].delay = 0;
+    }
+}
+
+NeuralNetwork.prototype.set_size_delay = function (size) {
+    if (size > 0) {
+        let m = 0;
+        for (let k = 0; k < this.synapses.length; k++) {
+            m += this.synapses[k].delay;
+        }
+        m = m / this.synapses.length;
+
+        let smin = m;
+        let smax = m;
+        for (let k = 0; k < this.synapses.length; k++) {
+            smin = Math.min(this.synapses[k].delay, smin);
+            smax = Math.max(this.synapses[k].delay, smax);
+        }
+        if ((smax - smin) > 0)
+            for (let k = 0; k < this.synapses.length; k++) {
+                this.synapses[k].delay = m + (this.synapses[k].delay - m) / (smax - smin) * size * 2;
+                if (this.synapses[k].delay < 0)
+                    this.synapses[k].delay = 0;
+
+            }
+    }
+}
+
+
 NeuralNetwork.prototype.set_mean_weight = function (mean) {
     let m = 0;
     for (let k = 0; k < this.synapses.length; k++) {
@@ -137,12 +179,12 @@ NeuralNetwork.prototype.set_size_weight = function (size) {
             smin = Math.min(this.synapses[k].weight, smin);
             smax = Math.max(this.synapses[k].weight, smax);
         }
-
-        for (let k = 0; k < this.synapses.length; k++) {
-            this.synapses[k].weight = m + (this.synapses[k].weight - m) / (smax - smin) * size;
-            if (this.synapses[k].weight < 0)
-                this.synapses[k].weight = 0;
-        }
+        if ((smax - smin) > 0)
+            for (let k = 0; k < this.synapses.length; k++) {
+                this.synapses[k].weight = m + (this.synapses[k].weight - m) / (smax - smin) * size * 2;
+                if (this.synapses[k].weight < 0)
+                    this.synapses[k].weight = 0;
+            }
     }
 }
 
@@ -163,7 +205,7 @@ function Synapse(from, to) {
 }
 
 Synapse.prototype.update = function () {
-    this.to.currentBuffer(this.weight * !this.drop, this.delay, this.from);
+    this.to.currentBuffer(weight_scale * this.weight * !this.drop, this.delay, this.from);
     if (this.from.spike_event) {
         this.event()
     }
@@ -185,6 +227,7 @@ Synapse.prototype.set_random_weight = function (_min, _max) {
 
 Synapse.prototype.set_random_delay = function (_min, _max) {
     this.delay = Math.random() * (_max - _min) + _min;
+
 }
 
 Synapse.prototype.set_weight_delay = function (w, d) {
@@ -193,6 +236,9 @@ Synapse.prototype.set_weight_delay = function (w, d) {
 }
 Synapse.prototype.set_delay = function (d) {
     this.delay = d;
+}
+Synapse.prototype.set_weight = function (w) {
+    this.weight = w;
 }
 
 Neuron.id = 0
@@ -207,10 +253,10 @@ Neuron.prototype.setup = function () {
     this.I = 0;
     this.dc = 0;
     this.Ibuf = 0;
-    this.dt = 0.01;
+    this.dt = 0.02;
     this.maxIdt = 50;
 
-    this.sp_bufferSize = 256;
+    this.sp_bufferSize = 1024;
     this.sp_buff_ptr = 0;
     this.sp_buff = new Array(this.sp_bufferSize).fill(0);
 
@@ -222,7 +268,7 @@ Neuron.prototype.setup = function () {
     this.spike_event = false;
     this.syn_type = 1;
     this.scale_dt = 1;
-
+    this.t = 0;
     this.reset();
 }
 
@@ -253,11 +299,14 @@ Neuron.prototype.reset = function () {
     this.sp = 0;
     this.s0 = 0;
     this.tau = 0.05;
+    this.noise = 0.0;
+    this.seed = Math.random() * 1000
 }
 
 Neuron.prototype.update = function () {
 
-    let I = this.dc + this.Ibuf;
+    this.t += this.dt
+    let I = this.dc + this.Ibuf + noise_scale * this.noise * (noise(this.t * 100 + this.seed) - 0.5);
 
     if (I * this.dt > this.maxIdt)
         I = this.maxIdt / this.dt;
@@ -311,8 +360,17 @@ Neuron.prototype.get_params = function () {
     return { 'a': this.a, 'b': this.b, 'c': this.c, 'd': this.d };
 }
 
+Neuron.prototype.set_syn_tau = function (tau) {
+    this.tau = tau;
+}
+
 
 Neuron.prototype.set_dc = function (dc_) {
     this.dc = dc_;
     console.log('Current ' + this.dc)
+}
+
+Neuron.prototype.set_noise = function (noise_) {
+    this.noise = noise_;
+    console.log('Noise ' + this.noise_)
 }

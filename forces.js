@@ -12,7 +12,7 @@ function applyForces(nodes) {
             pos = nodes[i].pos
             dir = nodes[j].pos.copy().sub(pos)
             force = dir.div(dir.mag() * dir.mag())
-            force.mult(forceConstant)
+            force.mult(forceConstantRepulsive)
             nodes[i].force.add(force.copy().mult(-1))
             nodes[j].force.add(force)
         }
@@ -23,8 +23,7 @@ function applyForces(nodes) {
         let node1 = nodes[con[0]]
         let node2 = nodes[con[1]]
         let dis = node1.pos.copy().sub(node2.pos)
-        // diff = dis.mag() - maxDis
-        dis = dis * con[2] * 100.0;
+        dis.mult(con[2] * forceConstantAttractive);
         node1.force.sub(dis)
         node2.force.add(dis)
     })
