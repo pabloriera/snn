@@ -48,7 +48,9 @@ clicked = false;
 lerpValue = 0.2;
 
 // scale = ["A4",]
-escala = ['D3', 'E3', 'F#3', 'G#3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4']
+escala_mayor = ['D3', 'E3', 'F#3', 'G#3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4']
+escala_menor = ['D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4']
+drumnotes = ['A1', 'B1', 'C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2']
 
 function setup() {
   net_score_border = (net_scale - 0.6) * windowWidth
@@ -80,7 +82,11 @@ function setup() {
   closeNode = nodes[0]
 
   for (let i = 0; i < NN.neurons.length; i++) {
-    let voice = new Voice(escala[i], 1 / 16);
+    if (i < escala_mayor.length)
+      nota = escala_mayor[i]
+    else
+      nota = escala_mayor[0]
+    let voice = new Voice(nota, 1 / 16);
     NN.neurons[i].set_event_callback(function () { voice.trigger(); });
     voices.push(voice);
     let circle = new Circle(nodes[i].pos, settings['circle size']);
@@ -99,9 +105,11 @@ function setup() {
     pulses.push(pulse);
     nodeCon.push([i, j, S.weight])
 
-    let y = NN.neurons.length - j + 1
-    let x = -i + (NN.neurons.length - 1) * 0.5
-    let knob = new Knob(knobR * x * 2.2 - 100, knobR * y * 2.2 - width / 4, knobR, 0)
+    // let y = NN.neurons.length - j + 1
+    // let x = -i + (NN.neurons.length - 1) * 0.5
+    let x = i
+    let y = j
+    let knob = new Knob(knobR * x * 2.2 - 200, knobR * y * 2.2 - width / 5, knobR, 0)
     knob.set_callback(function (v) {
       if (v * 2000 < 10)
         v = 0;
@@ -152,7 +160,7 @@ function setup() {
       delay_to_pulses();
     }
   );
-  netFolder.add(settings, 'delay size', 0.05, 0.5, 0.001).onChange(
+  netFolder.add(settings, 'delay size', 0.001, 0.5, 0.001).onChange(
     function () {
       NN.set_size_delay(this.getValue());
       delay_to_pulses();
@@ -241,8 +249,31 @@ function setup() {
   sndFolder.add(settings, 'note volume', -24, 0, 1).onChange(
     (val) => { synth.volume.value = val }
   )
-  sndFolder.add(settings, 'scale', { Major: 'major', Minor: 'minor', Harmonics: 'harmonics' }).onChange(
-    (val) => { console.log(val) }
+  sndFolder.add(settings, 'scale', { Drum: 'drum', Major: 'major', Minor: 'minor', Harmonics: 'harmonics' }).onChange(
+    (val) => {
+      var notes;
+      if (val == 'drum') {
+        synth = drum
+        notes = drumnotes
+      }
+      else if (val == 'major') {
+        synth = casio
+        notes = escala_mayor
+      }
+      else if (val == 'menor') {
+        synth = casio
+        notes = escala_menor
+      }
+      else if (val == 'harmonics') {
+        synth = casio
+        notes = Array(NN.neurons.length).fill().map((v, i) => 25 * (i + 1) + "Hz");
+      }
+      console.log(notes)
+      for (let i = 0; i < voices.length; i++) {
+        if (i < notes.length)
+          voices[i].set_note(notes[i]);
+      }
+    }
   )
   // gui.add({ 'kick': function () { kick() } }, 'kick');
   windowResized()

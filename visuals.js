@@ -191,7 +191,7 @@ class Pulse {
 
 class Score {
   constructor(left, bottom, width, height) {
-    this.buffer_size = 64
+    this.buffer_size = 256
     this.buffer = new Array(this.buffer_size).fill(0);
     this.left = left;
     this.bottom = bottom;
@@ -213,7 +213,7 @@ class Score {
       event = 0;
 
     this.buffer[Math.floor(this.pt)] += event;
-    this.pt = this.pt + 64 / 512
+    this.pt = this.pt + 0.5;
 
     if (this.pt > this.buffer_size) {
       this.pt -= this.buffer_size;

@@ -119,7 +119,6 @@ NeuralNetwork.prototype.set_mean_delay = function (mean) {
         m += this.synapses[k].delay;
     }
     m = m / this.synapses.length;
-    console.log(m)
     for (let k = 0; k < this.synapses.length; k++) {
         this.synapses[k].delay = this.synapses[k].delay - m + mean;
         if (this.synapses[k].delay < 0)
@@ -256,7 +255,7 @@ Neuron.prototype.setup = function () {
     this.dt = 0.02;
     this.maxIdt = 50;
 
-    this.sp_bufferSize = 1024;
+    this.sp_bufferSize = 2048 * 4;
     this.sp_buff_ptr = 0;
     this.sp_buff = new Array(this.sp_bufferSize).fill(0);
 
@@ -287,6 +286,7 @@ Neuron.prototype.reset = function () {
     this.t = 0;
     this.maxV = 30;
     this.minV = -80;
+    this.inner_steps = 4;
 
     this.a = 0.02;
     this.b = 0.2;
@@ -308,12 +308,16 @@ Neuron.prototype.update = function () {
     this.t += this.dt
     let I = this.dc + this.Ibuf + noise_scale * this.noise * (noise(this.t * 100 + this.seed) - 0.5);
 
-    if (I * this.dt > this.maxIdt)
+    if (I * this.dt > this.maxIdt) {
         I = this.maxIdt / this.dt;
+        console.log('max')
 
-    this.V = this.V + (0.04 * this.V * this.V + 5 * this.V + 140 - this.u + I) * this.dt;
-    this.u = this.u + this.a * (this.b * this.V - this.u) * this.dt;
+    }
 
+    for (let i = 0; i < this.inner_steps; i++) {
+        this.V = this.V + (0.04 * this.V * this.V + 5 * this.V + 140 - this.u + I) * this.dt / this.inner_steps;
+        this.u = this.u + this.a * (this.b * this.V - this.u) * this.dt / this.inner_steps;
+    }
     this.Vnorm = map(this.V, -70, this.maxV, 0, 1);
 
     this.spike_event = false;
