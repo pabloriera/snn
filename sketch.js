@@ -12,7 +12,7 @@ settings =
   'syn type': 0.5,
   'dropout': 0.5,
   'net': true,
-  'scale': {},
+  'scale': 'Major',
   'dc all': 0.0,
   'noise': 0,
   'knobs': false,
@@ -21,7 +21,9 @@ settings =
 
 var syn_colors;
 var color_base;
-var color_bright
+var color_bright;
+var net_score_border;
+var frame_rate = 60;
 
 i = 0;
 marginx = 50
@@ -32,7 +34,6 @@ mass = 1;
 knobR = 20
 score_sep = (12 - n_neurons) * 5 + 60
 
-var net_score_border
 circles = [];
 pulses = [];
 knobs = [];
@@ -260,7 +261,7 @@ function setup() {
         synth = casio
         notes = escala_mayor
       }
-      else if (val == 'menor') {
+      else if (val == 'minor') {
         synth = casio
         notes = escala_menor
       }
@@ -268,7 +269,6 @@ function setup() {
         synth = casio
         notes = Array(NN.neurons.length).fill().map((v, i) => 25 * (i + 1) + "Hz");
       }
-      console.log(notes)
       for (let i = 0; i < voices.length; i++) {
         if (i < notes.length)
           voices[i].set_note(notes[i]);
@@ -277,15 +277,18 @@ function setup() {
   )
   // gui.add({ 'kick': function () { kick() } }, 'kick');
   windowResized()
+
+  frameRate(frame_rate)
 }
 
 function draw() {
+
+
   translate(width / 2, height / 2)
   background(20);
 
-  i += 1;
-  if (i % 100)
-    applyForces(nodes)
+
+  applyForces(nodes)
 
   nodes.forEach(node => {
     node.update()

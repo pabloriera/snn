@@ -255,7 +255,7 @@ Neuron.prototype.setup = function () {
     this.dt = 0.02;
     this.maxIdt = 50;
 
-    this.sp_bufferSize = 2048 * 4;
+    this.sp_bufferSize = 512;
     this.sp_buff_ptr = 0;
     this.sp_buff = new Array(this.sp_bufferSize).fill(0);
 
@@ -344,8 +344,7 @@ Neuron.prototype.update = function () {
 
 Neuron.prototype.currentBuffer = function (w, d, neuron) {
     let now = neuron.sp_buff_ptr;
-    let fr = frameRate();
-    let past = now - Math.floor(d * fr);
+    let past = now - Math.floor(d * frame_rate);
 
     if (past > (now - neuron.sp_bufferSize)) {
         if (past < 0) {

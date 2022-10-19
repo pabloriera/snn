@@ -237,8 +237,8 @@ class Score {
 }
 
 class Scope {
-  constructor(left, bottom, width, height) {
-    this.buffer_size = 512
+  constructor(left, bottom, width, height, buffer_size = 512) {
+    this.buffer_size = buffer_size
     this.buffer = new Array(this.buffer_size).fill(0);
     this.left = left;
     this.bottom = bottom;
