@@ -1,8 +1,25 @@
+var syn_colors;
+var color_base;
+var color_bright;
+var net_score_border;
+var frame_rate = 60;
+
+maxDC = 250
+maxWeight = 50
+
+i = 0;
+marginx = 50
+gravityConstant = 1;
+forceConstantRepulsive = 10000;
+forceConstantAttractive = 0.00005;
+mass = 1;
+knobR = 20
+score_sep = (12 - n_neurons) * 5 + 60
 
 settings =
 {
-  'weight mean': 1000,
-  'weight size': 500,
+  'weight mean': maxWeight / 2,
+  'weight size': maxWeight / 4,
   'delay mean': 1,
   'delay size': .001,
   'dt': 0.25,
@@ -16,23 +33,10 @@ settings =
   'dc all': 0.0,
   'noise': 0,
   'knobs': false,
-  'syn tau': 0.05
+  'syn tau': 1,
+  'types all': 'rs',
+  'sim steps': 2
 }
-
-var syn_colors;
-var color_base;
-var color_bright;
-var net_score_border;
-var frame_rate = 60;
-
-i = 0;
-marginx = 50
-gravityConstant = 1;
-forceConstantRepulsive = 10000;
-forceConstantAttractive = 0.00005;
-mass = 1;
-knobR = 20
-score_sep = (12 - n_neurons) * 5 + 60
 
 circles = [];
 pulses = [];
@@ -143,13 +147,19 @@ function setup() {
       }
     }
   );
-  netFolder.add(settings, 'weight mean', 0, 2000.0, 10.0).onChange(
+  netFolder.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
+    function () {
+      NN.set_dropout(this.getValue());
+      weights_to_nodes(true);
+    }
+  );
+  netFolder.add(settings, 'weight mean', 0, maxWeight, 1.0).onChange(
     function () {
       NN.set_mean_weight(this.getValue());
       weights_to_nodes(true);
     }
   );
-  netFolder.add(settings, 'weight size', 0, 1000.0, 10).onChange(
+  netFolder.add(settings, 'weight size', 0, maxWeight / 2, 1).onChange(
     function () {
       NN.set_size_weight(this.getValue());
       weights_to_nodes(true);
@@ -167,10 +177,17 @@ function setup() {
       delay_to_pulses();
     }
   );
-  netFolder.add(settings, 'syn tau', 0, 0.1, 0.001).onChange(
+  netFolder.add(settings, 'syn tau', 0.5, 2, 0.01).onChange(
     (val) => {
       for (let i = 0; i < NN.neurons.length; i++) {
         NN.neurons[i].set_syn_tau(val)
+      }
+    }
+  );
+  netFolder.add(settings, 'sim steps', 1, 4, 1).onChange(
+    (val) => {
+      for (let i = 0; i < NN.neurons.length; i++) {
+        NN.neurons[i].steps = val
       }
     }
   );
@@ -186,12 +203,7 @@ function setup() {
   //     weights_to_nodes(true);
   //   }
   // );
-  netFolder.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
-    function () {
-      NN.set_dropout(this.getValue());
-      weights_to_nodes(true);
-    }
-  );
+
   netFolder.add(settings, 'knobs').onChange(
     (val) => {
       NN.print()
@@ -200,11 +212,21 @@ function setup() {
       }
     }
   );
+  const typesFolder = gui.addFolder('Types');
+  typesFolder.add(settings, 'types all', { 'CH': 'ch', 'RS': 'rs' }).onChange(
+    (val) => {
+      for (let i = 0; i < NN.neurons.length; i++) {
+        NN.neurons[i].set_type(val)
+        // console.log(gui.__folders['Currents'].__controllers[i + 1])
+        // gui.__folders['Currents'].__controllers[i + 2].setValue(val)
+      }
+    }
+  )
   const currentFolder = gui.addFolder('Currents');
 
-  currentFolder.add(settings, 'noise', 0, 500, 1)
+  currentFolder.add(settings, 'noise', 0, maxDC, 1)
 
-  currentFolder.add(settings, 'dc all', 0, 1000, 0.1).onChange(
+  currentFolder.add(settings, 'dc all', 0, maxDC, 0.1).onChange(
     (val) => {
       for (let i = 0; i < NN.neurons.length; i++) {
         settings['dc ' + (i + 1)] = val;
@@ -214,7 +236,7 @@ function setup() {
     }
   );
   for (let i = 0; i < NN.neurons.length; i++) {
-    currentFolder.add(settings, 'dc ' + (i + 1), 0, 1000, 0.1);
+    currentFolder.add(settings, 'dc ' + (i + 1), 0, maxDC, 0.1);
   }
 
   const visFolder = gui.addFolder('Vis');
@@ -310,18 +332,21 @@ function draw() {
   NN.update();
 
   for (let k = 0; k < NN.synapses.length; k++) {
-    let wnorm = map(NN.synapses[k].weight, 0, 2000, 0, 10);
+    let wnorm = map(NN.synapses[k].weight, 0, maxWeight, 0, 10);
     // console.log(NN.synapses[k].weight, wnorm)
     wnorm = wnorm * !NN.synapses[k].drop;
     pulses[k].draw_line(Math.sqrt(wnorm) * 2)
   }
   for (let i = 0; i < NN.neurons.length; i++) {
     circles[i].draw(NN.neurons[i].Vnorm)
-    scopes[i].draw(NN.neurons[i].Vnorm)
+    if (NN.neurons[i].spike_event)
+      scopes[i].draw(1)
+    else
+      scopes[i].draw(NN.neurons[i].Vnorm)
     scores[i].draw(NN.neurons[i].spike_event)
   }
   for (let k = 0; k < NN.synapses.length; k++) {
-    let wnorm = map(NN.synapses[k].weight, 0, 2000, 0, 10);
+    let wnorm = map(NN.synapses[k].weight, 0, maxWeight, 0, 10);
     wnorm = wnorm * !NN.synapses[k].drop;
     pulses[k].draw(wnorm)
   }
@@ -336,7 +361,7 @@ function weights_to_nodes(propagate) {
     let S = NN.synapses[k];
     nodeCon[k][2] = S.weight;
     if (propagate)
-      knobs[k].set_value(map(S.weight, 0, 2000, 0, 1))
+      knobs[k].set_value(map(S.weight, 0, maxWeight, 0, 1))
   }
 }
 

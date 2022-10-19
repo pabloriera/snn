@@ -1,5 +1,3 @@
-noise_scale = 10;
-weight_scale = 2;
 
 function NeuralNetwork() {
     this.neurons = [];
@@ -204,7 +202,7 @@ function Synapse(from, to) {
 }
 
 Synapse.prototype.update = function () {
-    this.to.currentBuffer(weight_scale * this.weight * !this.drop, this.delay, this.from);
+    this.to.currentBuffer(this.weight * !this.drop, this.delay, this.from);
     if (this.from.spike_event) {
         this.event()
     }
@@ -252,8 +250,9 @@ Neuron.prototype.setup = function () {
     this.I = 0;
     this.dc = 0;
     this.Ibuf = 0;
-    this.dt = 0.02;
-    this.maxIdt = 50;
+    this.dt = 0.25;
+    this.maxIdt = 100;
+    this.steps = 2;
 
     this.sp_bufferSize = 512;
     this.sp_buff_ptr = 0;
@@ -271,22 +270,10 @@ Neuron.prototype.setup = function () {
     this.reset();
 }
 
-
-Neuron.prototype.set_event_callback = function (cb) {
-    this.event_callback = cb;
-}
-
-Neuron.prototype.event = function () {
-    if (this.event_callback && typeof this.event_callback === "function") {
-        this.event_callback();
-    }
-}
-
 Neuron.prototype.reset = function () {
     this.t = 0;
     this.maxV = 30;
     this.minV = -80;
-    this.inner_steps = 4;
 
     this.a = 0.02;
     this.b = 0.2;
@@ -298,25 +285,35 @@ Neuron.prototype.reset = function () {
     //Synaptic variables
     this.sp = 0;
     this.s0 = 0;
-    this.tau = 0.05;
+    this.tau = 1;
     this.noise = 0.0;
     this.seed = Math.random() * 1000
+}
+
+
+Neuron.prototype.set_event_callback = function (cb) {
+    this.event_callback = cb;
+}
+
+Neuron.prototype.event = function () {
+    if (this.event_callback && typeof this.event_callback === "function") {
+        this.event_callback();
+    }
 }
 
 Neuron.prototype.update = function () {
 
     this.t += this.dt
-    let I = this.dc + this.Ibuf + noise_scale * this.noise * (noise(this.t * 100 + this.seed) - 0.5);
+    let I = this.dc + this.Ibuf + this.noise * (noise(this.t * 100 + this.seed) - 0.5);
 
     if (I * this.dt > this.maxIdt) {
         I = this.maxIdt / this.dt;
         console.log('max')
-
     }
 
-    for (let i = 0; i < this.inner_steps; i++) {
-        this.V = this.V + (0.04 * this.V * this.V + 5 * this.V + 140 - this.u + I) * this.dt / this.inner_steps;
-        this.u = this.u + this.a * (this.b * this.V - this.u) * this.dt / this.inner_steps;
+    for (let i = 0; i < this.steps; i++) {
+        this.V = this.V + (0.04 * this.V * this.V + 5 * this.V + 140 - this.u + I) * this.dt;
+        this.u = this.u + this.a * (this.b * this.V - this.u) * this.dt;
     }
     this.Vnorm = map(this.V, -70, this.maxV, 0, 1);
 
@@ -367,6 +364,21 @@ Neuron.prototype.set_syn_tau = function (tau) {
     this.tau = tau;
 }
 
+Neuron.prototype.set_type = function (type_) {
+    if (type_ == 'ch') {
+        this.a = 0.02;
+        this.b = 0.2;
+        this.c = -50;
+        this.d = 2;
+    }
+    else if (type_ == 'rs') {
+        this.a = 0.02;
+        this.b = 0.2;
+        this.c = -65;
+        this.d = 8;
+    }
+    console.log(type_)
+}
 
 Neuron.prototype.set_dc = function (dc_) {
     this.dc = dc_;
