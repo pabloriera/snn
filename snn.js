@@ -125,27 +125,33 @@ NeuralNetwork.prototype.set_mean_delay = function (mean) {
 }
 
 NeuralNetwork.prototype.set_size_delay = function (size) {
-    if (size > 0) {
-        let m = 0;
-        for (let k = 0; k < this.synapses.length; k++) {
-            m += this.synapses[k].delay;
-        }
-        m = m / this.synapses.length;
-
-        let smin = m;
-        let smax = m;
-        for (let k = 0; k < this.synapses.length; k++) {
-            smin = Math.min(this.synapses[k].delay, smin);
-            smax = Math.max(this.synapses[k].delay, smax);
-        }
-        if ((smax - smin) > 0)
-            for (let k = 0; k < this.synapses.length; k++) {
-                this.synapses[k].delay = m + (this.synapses[k].delay - m) / (smax - smin) * size * 2;
-                if (this.synapses[k].delay < 0)
-                    this.synapses[k].delay = 0;
-
-            }
+    let m = 0;
+    for (let k = 0; k < this.synapses.length; k++) {
+        m += this.synapses[k].delay;
     }
+    m = m / this.synapses.length;
+
+    let smin = m;
+    let smax = m;
+    for (let k = 0; k < this.synapses.length; k++) {
+        smin = Math.min(this.synapses[k].delay, smin);
+        smax = Math.max(this.synapses[k].delay, smax);
+    }
+
+
+    for (let k = 0; k < this.synapses.length; k++) {
+        if ((smax - smin) == 0 && size > 0)
+            this.synapses[k].delay = m + (this.synapses[k].delay - m) + (Math.random() - 0.5) * size * 2;
+        else if ((smax - smin) > 0)
+            this.synapses[k].delay = m + (this.synapses[k].delay - m) / (smax - smin) * size * 2;
+        else if (size == 0)
+            this.synapses[k].delay = m + (this.synapses[k].delay - m);
+
+
+        if (this.synapses[k].delay < 0)
+            this.synapses[k].delay = 0;
+    }
+
 }
 
 
@@ -163,26 +169,34 @@ NeuralNetwork.prototype.set_mean_weight = function (mean) {
 }
 
 NeuralNetwork.prototype.set_size_weight = function (size) {
-    if (size > 0) {
-        let m = 0;
-        for (let k = 0; k < this.synapses.length; k++) {
-            m += this.synapses[k].weight;
-        }
-        m = m / this.synapses.length;
 
-        let smin = m;
-        let smax = m;
-        for (let k = 0; k < this.synapses.length; k++) {
-            smin = Math.min(this.synapses[k].weight, smin);
-            smax = Math.max(this.synapses[k].weight, smax);
-        }
-        if ((smax - smin) > 0)
-            for (let k = 0; k < this.synapses.length; k++) {
-                this.synapses[k].weight = m + (this.synapses[k].weight - m) / (smax - smin) * size * 2;
-                if (this.synapses[k].weight < 0)
-                    this.synapses[k].weight = 0;
-            }
+    let m = 0;
+    for (let k = 0; k < this.synapses.length; k++) {
+        m += this.synapses[k].weight;
     }
+    m = m / this.synapses.length;
+
+    let smin = m;
+    let smax = m;
+    for (let k = 0; k < this.synapses.length; k++) {
+        smin = Math.min(this.synapses[k].weight, smin);
+        smax = Math.max(this.synapses[k].weight, smax);
+    }
+
+
+    for (let k = 0; k < this.synapses.length; k++) {
+        if ((smax - smin) == 0 && size > 0)
+            this.synapses[k].weight = m + (this.synapses[k].weight - m) + (Math.random() - 0.5) * size * 2;
+        else if ((smax - smin) > 0)
+            this.synapses[k].weight = m + (this.synapses[k].weight - m) / (smax - smin) * size * 2;
+        else if (size == 0)
+            this.synapses[k].weight = m + (this.synapses[k].weight - m);
+
+
+        if (this.synapses[k].weight < 0)
+            this.synapses[k].weight = 0;
+    }
+
 }
 
 NeuralNetwork.prototype.reset = function () {

@@ -4,7 +4,7 @@ var color_bright;
 var net_score_border;
 var frame_rate = 60;
 
-maxDC = 250
+maxDC = 150
 maxWeight = 50
 
 i = 0;
@@ -116,9 +116,9 @@ function setup() {
     let y = j
     let knob = new Knob(knobR * x * 2.2 - 200, knobR * y * 2.2 - width / 5, knobR, 0)
     knob.set_callback(function (v) {
-      if (v * 2000 < 10)
+      if (v < 0.01)
         v = 0;
-      S.set_weight(v * 2000);
+      S.set_weight(v * maxWeight);
       weights_to_nodes(false);
     })
     knobs.push(knob)
