@@ -91,7 +91,7 @@ function setup() {
       nota = escala_mayor[i]
     else
       nota = escala_mayor[0]
-    let voice = new Voice(nota, 1 / 16);
+    let voice = new Voice(nota, 1 / 16, casio);
     NN.neurons[i].set_event_callback(function () { voice.trigger(); });
     voices.push(voice);
     let circle = new Circle(nodes[i].pos, settings['circle size']);
@@ -272,28 +272,41 @@ function setup() {
   sndFolder.add(settings, 'note volume', -24, 0, 1).onChange(
     (val) => { synth.volume.value = val }
   )
-  sndFolder.add(settings, 'scale', { Drum: 'drum', Major: 'major', Minor: 'minor', Harmonics: 'harmonics' }).onChange(
+  sndFolder.add(settings, 'scale', { Drum: 'drum', Major: 'major', Minor: 'minor', Harmonics: 'harmonics', Mix: 'mix' }).onChange(
     (val) => {
       var notes;
       if (val == 'drum') {
-        synth = drum
+        synths = Array(NN.neurons.length).fill(drum)
         notes = drumnotes
       }
       else if (val == 'major') {
-        synth = casio
+        synths = Array(NN.neurons.length).fill(casio)
         notes = escala_mayor
       }
       else if (val == 'minor') {
-        synth = casio
+        synths = Array(NN.neurons.length).fill(casio)
         notes = escala_menor
       }
       else if (val == 'harmonics') {
-        synth = casio
+        synths = Array(NN.neurons.length).fill(casio)
         notes = Array(NN.neurons.length).fill().map((v, i) => 25 * (i + 1) + "Hz");
       }
+
+      else if (val == 'mix') {
+        synths = Array(NN.neurons.length).fill(casio)
+        notes = escala_mayor
+
+        for (let i = 0; i < 3; i++) {
+          synths[i] = drum
+          notes[i] = drumnotes[i]
+        }
+      }
+
       for (let i = 0; i < voices.length; i++) {
-        if (i < notes.length)
+        if (i < notes.length) {
           voices[i].set_note(notes[i]);
+          voices[i].set_synth(synths[i]);
+        }
       }
     }
   )
