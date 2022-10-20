@@ -5,7 +5,7 @@ var net_score_border;
 var frame_rate = 60;
 
 maxDC = 150
-maxWeight = 50
+maxWeight = 80
 
 i = 0;
 marginx = 50
