@@ -35,7 +35,8 @@ settings =
   'knobs': false,
   'syn tau': 1,
   'types all': 'rs',
-  'sim steps': 2
+  'sim steps': 2,
+  'midi outputs': null
 }
 
 circles = [];
@@ -311,6 +312,33 @@ function setup() {
       }
     }
   )
+
+  const midiFolder = gui.addFolder('Midi');
+  midiFolder.open();
+  WebMidi.enable().then(result => {
+    console.log('Midi Enabled')
+    midiOutputs = {}
+    for (let i = 0; i < WebMidi.outputs.length; i++) {
+      midiOutputs[WebMidi.outputs[i].name] = WebMidi.outputs[i]._midiOutput;
+    }
+    console.log(midiOutputs)
+    midiFolder.add(settings, 'midi outputs', midiOutputs).onChange(
+      (val) => {
+        console.log(val)
+        for (let i = 0; i < NN.neurons.length; i++)
+          NN.neurons[i].set_voltage_callback(function (x) {
+             console.log(val);
+             val.send([176,i,x]) 
+            });
+      }
+    )
+
+  }).catch(err => {
+    console.log('Midi Failed')
+  });
+
+
+
   // gui.add({ 'kick': function () { kick() } }, 'kick');
   windowResized()
 
