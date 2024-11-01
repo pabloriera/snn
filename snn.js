@@ -304,6 +304,9 @@ Neuron.prototype.reset = function () {
     this.seed = Math.random() * 1000
 }
 
+Neuron.prototype.set_voltage_callback = function (cb) {
+    this.voltage_callback = cb;
+}
 
 Neuron.prototype.set_event_callback = function (cb) {
     this.event_callback = cb;
@@ -349,6 +352,9 @@ Neuron.prototype.update = function () {
 
     this.s0 = 0;
     this.Ibuf = 0;
+
+    if (this.voltage_callback)
+        this.voltage_callback(this.Vnorm)
 
     return { 'V': this.V, 'Vnorm': this.Vnorm, 'u': this.u, 'spike': this.spike_event };
 }

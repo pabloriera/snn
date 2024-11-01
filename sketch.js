@@ -26,6 +26,7 @@ settings =
   'circle size': 50,
   'note duration': 0.125,
   'note volume': -12,
+  'mute half': false,
   'syn type': 0.5,
   'dropout': 0.5,
   'net': true,
@@ -273,6 +274,15 @@ function setup() {
   sndFolder.add(settings, 'note volume', -24, 0, 1).onChange(
     (val) => { synth.volume.value = val }
   )
+  sndFolder.add(settings, 'mute half').onChange(
+    (val) => {
+      for (let i = 0; i < voices.length; i++) {
+        if (i >= voices.length / 2) {
+          voices[i].set_velocity(val ? 0 : 0.8);          
+        }
+      }
+    }
+  )
   sndFolder.add(settings, 'scale', { Drum: 'drum', Major: 'major', Minor: 'minor', Harmonics: 'harmonics', Mix: 'mix', Half : 'half' }).onChange(
     (val) => {
       var notes;
@@ -302,9 +312,6 @@ function setup() {
           notes[i] = drumnotes[i]
 
         }
-      else if (val == 'half') {
-        synths = Array(NN.neurons.length/2).fill(casio)
-        notes = escala_mayor     
       }
 
       for (let i = 0; i < voices.length; i++) {

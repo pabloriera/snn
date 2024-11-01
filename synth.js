@@ -29,6 +29,7 @@ function Voice(note, duration, synth) {
     this.synth = synth
     this.set_note(note);
     this.set_duration(duration);
+    this.velocity = 1.0;
 }
 
 Voice.prototype.set_midi_note = function (note) {
@@ -39,6 +40,9 @@ Voice.prototype.set_synth = function (synth) {
     this.synth = synth;
 }
 
+Voice.prototype.set_velocity = function (velocity) {
+    this.velocity = velocity;
+}
 
 Voice.prototype.set_note = function (note) {
     this.note = Tone.Frequency(note);
@@ -49,5 +53,5 @@ Voice.prototype.set_duration = function (duration) {
 }
 
 Voice.prototype.trigger = function () {
-    this.synth.triggerAttackRelease(this.note, this.duration);
+    this.synth.triggerAttackRelease(this.note, this.duration, undefined, this.velocity);
 }
