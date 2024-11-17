@@ -53,5 +53,7 @@ Voice.prototype.set_duration = function (duration) {
 }
 
 Voice.prototype.trigger = function () {
-    this.synth.triggerAttackRelease(this.note, this.duration, undefined, this.velocity);
+    if (this.synth)
+        this.synth.triggerAttackRelease(this.note, this.duration, undefined, this.velocity);
+
 }

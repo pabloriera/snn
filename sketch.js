@@ -78,8 +78,6 @@ function setup() {
   NN.set_dropout(settings['dropout']);
   NN.set_type_proportion(settings['syn type']);
 
-
-
   for (let i = 0; i < n_neurons; i++) {
     let x = random(-width * 0.25, width * 0.25)
     let y = random(-height * 0.25, height * 0.25)
@@ -94,11 +92,13 @@ function setup() {
     else
       nota = escala_mayor[0]
     let voice = new Voice(nota, 1 / 16, casio);
-    NN.neurons[i].set_event_callback(function () { voice.trigger(); });
+    NN.neurons[i].set_event_callback(function () { 
+      voice.trigger(); });
     voices.push(voice);
     let circle = new Circle(nodes[i].pos, settings['circle size']);
     circles.push(circle);
-    settings['dc ' + (i + 1)] = 0
+    settings['dc ' + (i + 1)] = 0;
+    settings['syn_type ' + (i + 1)] = -1;
   }
 
 
@@ -140,6 +140,13 @@ function setup() {
   netFolder.add(settings, 'syn type', 0, 1, 0.01).onChange(
     function () {
       NN.set_type_proportion(this.getValue());
+      for (let i = 0; i < NN.neurons.length; i++) {
+        val = NN.neurons[i].syn_type
+        settings['syn_type ' + (i + 1)] = val;
+        // console.log(gui.__folders['Currents'].__controllers[i + 1])
+        gui.__folders['Ex/Inh'].__controllers[i].setValue(val)
+      }
+
       for (let k = 0; k < NN.synapses.length; k++) {
         let S = NN.synapses[k];
         i = S.from.id;
@@ -205,7 +212,7 @@ function setup() {
   //     weights_to_nodes(true);
   //   }
   // );
-
+  
   netFolder.add(settings, 'knobs').onChange(
     (val) => {
       NN.print()
@@ -214,6 +221,7 @@ function setup() {
       }
     }
   );
+
   const typesFolder = gui.addFolder('Types');
   typesFolder.add(settings, 'types all', { 'CH': 'ch', 'RS': 'rs' }).onChange(
     (val) => {
@@ -224,6 +232,19 @@ function setup() {
       }
     }
   )
+  const exinhFolder = gui.addFolder('Ex/Inh');
+  for (let i = 0; i < NN.neurons.length; i++) {
+    exinhFolder.add(settings, 'syn_type ' + (i + 1)).onChange(
+      (val) => {
+        for (let k = 0; k < NN.synapses.length; k++) {
+          let S = NN.synapses[k];
+          i = S.from.id;
+          j = S.to.id;
+          pulses[k].set_syn_type(val)
+        }
+      });
+  }
+
   const currentFolder = gui.addFolder('Currents');
 
   currentFolder.add(settings, 'noise', 0, maxDC, 1)
@@ -278,14 +299,15 @@ function setup() {
     (val) => {
       for (let i = 0; i < voices.length; i++) {
         if (i >= voices.length / 2) {
-          voices[i].set_velocity(val ? 0 : 0.8);          
+          voices[i].set_velocity(val ? 0 : 0.8);
         }
       }
     }
   )
-  sndFolder.add(settings, 'scale', { Drum: 'drum', Major: 'major', Minor: 'minor', Harmonics: 'harmonics', Mix: 'mix', Half : 'half' }).onChange(
+  sndFolder.add(settings, 'scale', { Drum: 'drum', Major: 'major', Minor: 'minor', Harmonics: 'harmonics', Mix: 'mix'}).onChange(
     (val) => {
       var notes;
+      var synths;
       if (val == 'drum') {
         synths = Array(NN.neurons.length).fill(drum)
         notes = drumnotes
@@ -319,6 +341,8 @@ function setup() {
           voices[i].set_note(notes[i]);
           voices[i].set_synth(synths[i]);
         }
+        else
+          voices[i].set_synth(null);
       }
     }
   )
@@ -337,9 +361,9 @@ function setup() {
         console.log(val)
         for (let i = 0; i < NN.neurons.length; i++)
           NN.neurons[i].set_voltage_callback(function (x) {
-             console.log(val);
-             val.send([176,i,x]) 
-            });
+            console.log(val);
+            val.send([176, i, x])
+          });
       }
     )
 
@@ -379,6 +403,7 @@ function draw() {
   for (let i = 0; i < NN.neurons.length; i++) {
     NN.neurons[i].dc = settings['dc ' + (i + 1)];
     NN.neurons[i].noise = settings['noise'];
+    NN.neurons[i].syn_type = 2 * settings['syn_type ' + (i + 1)] - 1;
   }
 
   NN.update();
