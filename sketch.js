@@ -3,6 +3,15 @@ var color_base;
 var color_bright;
 var net_score_border;
 var frame_rate = 60;
+var currentMidiOut = null;
+
+// MIDI Configuration
+const MIDI_CONFIG = {
+  baseNote: 48,  // C3
+  ccStartChannel: 0,
+  velocityNote: 100,
+  noteDuration: 100  // milliseconds
+};
 
 maxDC = 150
 maxWeight = 80
@@ -26,18 +35,19 @@ settings =
   'circle size': 50,
   'note duration': 0.125,
   'note volume': -12,
+  'mute all': false,
   'mute half': false,
   'syn type': 0.5,
   'dropout': 0.5,
   'net': true,
-  'scale': 'Major',
+  'scale': 'major',
   'dc all': 0.0,
   'noise': 0,
   'knobs': false,
   'syn tau': 1,
   'types all': 'rs',
   'sim steps': 2,
-  'midi outputs': null
+  'midi outputs': 'Midi Through Port-0'
 }
 
 circles = [];
@@ -59,7 +69,76 @@ escala_mayor = ['D3', 'E3', 'F#3', 'G#3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 
 escala_menor = ['D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4']
 drumnotes = ['A1', 'B1', 'C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2']
 
+// ===== MIDI Helper Functions =====
+// Map note names to MIDI numbers
+const noteToMidi = {
+  'C3': 36, 'C#3': 37, 'D3': 38, 'D#3': 39, 'E3': 40, 'F3': 41, 'F#3': 42, 'G3': 43, 'G#3': 44, 'A3': 45, 'A#3': 46, 'B3': 47,
+  'C4': 48, 'C#4': 49, 'D4': 50, 'D#4': 51, 'E4': 52, 'F4': 53, 'F#4': 54, 'G4': 55, 'G#4': 56, 'A4': 57, 'A#4': 58, 'B4': 59,
+  'A1': 33, 'B1': 35, 'C2': 36, 'D2': 38, 'E2': 40, 'F2': 41, 'G2': 43, 'A2': 45, 'B2': 47
+};
+
+function getMidiNoteForNeuron(neuronIndex) {
+  const scale = settings['scale'];
+  let noteName = null;
+  
+  if (scale === 'drum') {
+    noteName = drumnotes[neuronIndex % drumnotes.length];
+  } else if (scale === 'major') {
+    noteName = escala_mayor[neuronIndex % escala_mayor.length];
+  } else if (scale === 'minor') {
+    noteName = escala_menor[neuronIndex % escala_menor.length];
+  }
+  
+  // Default to C3 + neuron index if scale not found
+  if (!noteName || !noteToMidi[noteName]) {
+    return MIDI_CONFIG.baseNote + neuronIndex;
+  }
+  
+  return noteToMidi[noteName] + 24; // Add 12 semitones for one octave higher
+}
+
+function sendMidiNote(neuronIndex) {
+  if (!currentMidiOut) return;
+  const noteNum = getMidiNoteForNeuron(neuronIndex);
+  currentMidiOut.send([0x90, noteNum, MIDI_CONFIG.velocityNote]); // Note On
+  
+  // Send Note Off after duration (using note duration setting * 1000 for milliseconds)
+  setTimeout(() => {
+    if (currentMidiOut) {
+      currentMidiOut.send([0x80, noteNum, 0]); // Note Off
+    }
+  }, settings['note duration'] * 1000);
+}
+
+function sendMidiControlChange(channel, value) {
+  if (!currentMidiOut) return;
+  const cc = MIDI_CONFIG.ccStartChannel + channel;
+  // Clamp value to 0-1 range, then convert to 0-127
+  const clampedValue = Math.max(0, Math.min(1, value));
+  const ccValue = Math.round(clampedValue * 127);
+  try {
+    currentMidiOut.send([0xB0, cc, ccValue]); // CC message
+  } catch (err) {
+    console.error('MIDI send error:', err, {cc, ccValue});
+  }
+}
+
+// ===== End MIDI Helper Functions =====
+
 function setup() {
+  // Resume AudioContext on first user interaction (browser autoplay policy)
+  const resumeAudioContext = () => {
+    if (Tone.getContext().state === 'suspended') {
+      Tone.getContext().resume().then(() => {
+        console.log('AudioContext resumed');
+      });
+    }
+    document.removeEventListener('click', resumeAudioContext);
+    document.removeEventListener('touchstart', resumeAudioContext);
+  };
+  document.addEventListener('click', resumeAudioContext);
+  document.addEventListener('touchstart', resumeAudioContext);
+  
   net_score_border = (net_scale - 0.6) * windowWidth
   createCanvas(windowWidth, windowHeight);
   colorMode(HSB, 100);
@@ -92,8 +171,22 @@ function setup() {
     else
       nota = escala_mayor[0]
     let voice = new Voice(nota, 1 / 16, casio);
-    NN.neurons[i].set_event_callback(function () { 
-      voice.trigger(); });
+    
+    // Set spike event callback - triggers synth voice and sends MIDI note
+    NN.neurons[i].set_event_callback((function(neuronIndex) {
+      return function() {
+        voice.trigger();
+        sendMidiNote(neuronIndex);
+      };
+    })(i));
+    
+    // Set voltage callback - sends CC (control change) values for analog control
+    NN.neurons[i].set_voltage_callback((function(neuronIndex) {
+      return function(voltage) {
+        sendMidiControlChange(neuronIndex, voltage);
+      };
+    })(i));
+    
     voices.push(voice);
     let circle = new Circle(nodes[i].pos, settings['circle size']);
     circles.push(circle);
@@ -287,19 +380,37 @@ function setup() {
   sndFolder.open()
   sndFolder.add(settings, 'note duration', .01, 1, 0.01).onChange(
     function () {
+      const duration = this.getValue();
+      settings['note duration'] = duration;
       for (let i = 0; i < voices.length; i++) {
-        voices[i].set_duration(this.getValue());
+        voices[i].set_duration(duration);
       }
     }
   );
   sndFolder.add(settings, 'note volume', -24, 0, 1).onChange(
     (val) => { synth.volume.value = val }
   )
-  sndFolder.add(settings, 'mute half').onChange(
+  sndFolder.add(settings, 'mute all').onChange(
     (val) => {
       for (let i = 0; i < voices.length; i++) {
-        if (i >= voices.length / 2) {
-          voices[i].set_velocity(val ? 0 : 0.8);
+        if (val) {
+          voices[i].set_velocity(0); // Mute all
+        } else {
+          // Restore based on mute half setting
+          const shouldMute = settings['mute half'] && i >= voices.length / 2;
+          voices[i].set_velocity(shouldMute ? 0 : 0.8);
+        }
+      }
+    }
+  )
+  sndFolder.add(settings, 'mute half').onChange(
+    (val) => {
+      // Only apply if mute all is not active
+      if (!settings['mute all']) {
+        for (let i = 0; i < voices.length; i++) {
+          if (i >= voices.length / 2) {
+            voices[i].set_velocity(val ? 0 : 0.8);
+          }
         }
       }
     }
@@ -345,30 +456,34 @@ function setup() {
           voices[i].set_synth(null);
       }
     }
-  )
+  ).setValue('major'); // Set scale to 'major' by default
 
   const midiFolder = gui.addFolder('Midi');
   midiFolder.open();
   WebMidi.enable().then(result => {
-    console.log('Midi Enabled')
-    midiOutputs = {}
+    console.log('Midi Enabled');
+    midiOutputs = {};
     for (let i = 0; i < WebMidi.outputs.length; i++) {
-      midiOutputs[WebMidi.outputs[i].name] = WebMidi.outputs[i]._midiOutput;
+        midiOutputs[WebMidi.outputs[i].name] = WebMidi.outputs[i];
     }
-    console.log(midiOutputs)
+    console.log('Available MIDI outputs:', midiOutputs);
+    
+    // Set default MIDI output to first available
+    if (WebMidi.outputs.length > 0) {
+        settings['midi outputs'] = WebMidi.outputs[0].name;
+        currentMidiOut = WebMidi.outputs[0];
+    }
+    
     midiFolder.add(settings, 'midi outputs', midiOutputs).onChange(
-      (val) => {
-        console.log(val)
-        for (let i = 0; i < NN.neurons.length; i++)
-          NN.neurons[i].set_voltage_callback(function (x) {
-            console.log(val);
-            val.send([176, i, x])
-          });
-      }
-    )
-
-  }).catch(err => {
-    console.log('Midi Failed')
+        (val) => {
+            if (val && midiOutputs[val]) {
+                currentMidiOut = midiOutputs[val];
+                console.log('Selected MIDI output:', currentMidiOut.name);
+            }
+        }
+    ).setValue(WebMidi.outputs[0].name); // Set initial value to first output
+}).catch(err => {
+    console.log('Midi Failed:', err);
   });
 
 
