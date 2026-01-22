@@ -126,7 +126,7 @@ class Pulse {
     this.color = color_base;
     this.on = true;
     this.syn_type = syn_type;
-    this.syn_color = syn_colors[syn_type.toString()]
+    this.syn_color = syn_colors[syn_type.toString()] || color_base;
   }
   add_event() {
     this.pulses.push(0);
@@ -139,7 +139,7 @@ class Pulse {
   }
   set_syn_type(syn_type) {
     this.syn_type = syn_type;
-    this.syn_color = syn_colors[syn_type.toString()]
+    this.syn_color = syn_colors[syn_type.toString()] || color_base;
   }
   draw(size) {
     if (this.on) {

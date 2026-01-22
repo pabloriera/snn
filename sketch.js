@@ -191,7 +191,7 @@ function setup() {
     let circle = new Circle(nodes[i].pos, settings['circle size']);
     circles.push(circle);
     settings['dc ' + (i + 1)] = 0;
-    settings['syn_type ' + (i + 1)] = -1;
+    settings['syn_type ' + (i + 1)] = NN.neurons[i].syn_type;
   }
 
 
@@ -230,13 +230,20 @@ function setup() {
   var gui = new dat.GUI();
   const netFolder = gui.addFolder('Network');
   netFolder.open()
+  netFolder.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
+    function () {
+      NN.set_dropout(this.getValue());
+      weights_to_nodes(true);
+    }
+  );
+
+  // Add syn type controller to Network folder after Ex/Inh folder exists
   netFolder.add(settings, 'syn type', 0, 1, 0.01).onChange(
     function () {
       NN.set_type_proportion(this.getValue());
       for (let i = 0; i < NN.neurons.length; i++) {
         val = NN.neurons[i].syn_type
         settings['syn_type ' + (i + 1)] = val;
-        // console.log(gui.__folders['Currents'].__controllers[i + 1])
         gui.__folders['Ex/Inh'].__controllers[i].setValue(val)
       }
 
@@ -248,13 +255,7 @@ function setup() {
         pulses[k].set_syn_type(syn_type)
       }
     }
-  );
-  netFolder.add(settings, 'dropout', 0, 1.0, 0.01).onChange(
-    function () {
-      NN.set_dropout(this.getValue());
-      weights_to_nodes(true);
-    }
-  );
+  );  
   netFolder.add(settings, 'weight mean', 0, maxWeight, 1.0).onChange(
     function () {
       NN.set_mean_weight(this.getValue());
@@ -327,7 +328,7 @@ function setup() {
   )
   const exinhFolder = gui.addFolder('Ex/Inh');
   for (let i = 0; i < NN.neurons.length; i++) {
-    exinhFolder.add(settings, 'syn_type ' + (i + 1)).onChange(
+    exinhFolder.add(settings, 'syn_type ' + (i + 1), {Inhibitory: -1, Excitatory: 1}).onChange(
       (val) => {
         for (let k = 0; k < NN.synapses.length; k++) {
           let S = NN.synapses[k];
